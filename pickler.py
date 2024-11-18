@@ -7,7 +7,7 @@ import numpy as np
 
 # Initialize the cascade classifier and video capture
 face_detector = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-cap = cv2.VideoCapture(1)  # 0 for default cam, 1 for external camera on Mac
+cap = cv2.VideoCapture(0)  # Index: 0 for Windows and Raspberry Pi, 1 for Mac
 
 image_counter = 0
 
@@ -16,15 +16,22 @@ if not os.path.exists(output_folder):
     os.makedirs(output_folder)
 
 # Pickle the first image when 'P' is pressed
-def pickle_image(grey_frame, filename):
+# a pickled image is comprised of a matrix(image itself) and an associated name. 
+def pickle_image(grey_frame, filename, person_name):
     filepath = os.path.join(output_folder, filename)
+    data = {'matrix': grey_frame, 'person': person_name}  # Include the name and image
+
     with open(filepath, 'wb') as f:
-        pickle.dump(grey_frame, f)
+        pickle.dump(data, f)
 
 # Function to extract the face region
 def extract_face(image, face_coords):
     (x, y, w, h) = face_coords
     return image[y:y+h, x:x+w]
+
+
+person_name = 'person' # replace with your name when pickeling
+
 
 while True:
     # Capture frame
@@ -43,8 +50,8 @@ while True:
         # If 'P' is pressed, pickle the image
         if cv2.waitKey(1) == ord('p'):
             # Generate a unique filename
-            filename = f"image_{image_counter}.pickle"
-            pickle_image(grey, filename)
+            filename = f"image_{person_name}{image_counter}.pickle"
+            pickle_image(grey, filename, person_name)
             print(f"Image pickled as {filename}.")
             image_counter += 1
 

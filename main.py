@@ -2,12 +2,13 @@ import cv2
 import os
 import pickle
 import numpy as np
+import re
 
 pickled = True  # set to true if you have pickled your faces with pickler.py
 
 # Initialize the cascade classifier and video capture
 face_detector = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-cap = cv2.VideoCapture(1)  # 0 for default cam, 1 for external camera on Mac
+cap = cv2.VideoCapture(0)  # Index: 0 for Windows and Raspberry Pi, 1 for Mac
 
 # Folder where pickled images are saved
 pickled_folder = "pickled_images"
@@ -45,8 +46,13 @@ def load_pickled_images():
         if filename.endswith(".pickle"):
             filepath = os.path.join(pickled_folder, filename)
             with open(filepath, 'rb') as f:
-                pickled_images.append(pickle.load(f))
+                data = pickle.load(f)  # Load the pickled object
+                if isinstance(data, dict) and 'matrix' in data and 'person' in data:
+                    pickled_images.append(data)  # ensure pickeled image in valid format and add to array
+                else:
+                    print(f"Pickled file {filename} does not contain valid data.")
     return pickled_images
+
 
 # Load pickled images once at the beginning
 pickled_images = load_pickled_images()
@@ -79,10 +85,12 @@ while True:
 
         if pickled:
             for pickled_image in pickled_images:
+                matrix = pickled_image['matrix'] # get the image itself
+                
                 # Detect face in the pickled image
-                pickled_faces = face_detector.detectMultiScale(pickled_image, 1.1, 8)
+                pickled_faces = face_detector.detectMultiScale(matrix, 1.1, 8)
                 if len(pickled_faces) > 0:
-                    pickled_face = extract_face(pickled_image, pickled_faces[0])
+                    pickled_face = extract_face(matrix, pickled_faces[0])
 
                     live_face = extract_face(frame, (x, y, w, h))
 
@@ -90,14 +98,19 @@ while True:
 
                     # If MSE is low, faces are likely the same
                     if mse < 100:
-                        cv2.putText(frame, "Face Matched!", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
+                        person = pickled_image['person'] # get the person associated with that pickeled image
+                        
+                        cv2.putText(frame, "Face Matched!", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA) # put valid text on screen in green
+                        cv2.putText(frame, person, (x,y), cv2.FONT_ITALIC, 1, (255, 255, 255), 2, cv2.LINE_AA) # put text to identify person in white
                         print("Face matched!")
+                        print("Hello " + person + "!")
+
                         match_found = True  # Set match_found to True when a match is found
                         break  # No need to check further pickled images
 
             # If no match found after comparing all pickled images, show "No match"
             if not match_found:
-                cv2.putText(frame, "No match", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+                cv2.putText(frame, "No match", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) #put invalid text on screen in red
                 print("No match.")
 
     frame_count += 1
