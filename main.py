@@ -4,7 +4,6 @@ import cv2
 import os
 import pickle
 import numpy as np
-import re
 
 databaseAdd = input("Would you like to add your face to the database?\n1: Yes\n2: No\n")
 
@@ -17,7 +16,7 @@ else:
     pickled = False
 
 # Initialize the cascade classifier and video capture
-face_detector = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+face_detector = cv2.CascadeClassifier("haarcascade_frontalface_default.xml")
 cap = cv2.VideoCapture(0)  # Index: 0 for Windows and Raspberry Pi, 1 for Mac
 
 # Folder where pickled images are saved
@@ -70,6 +69,17 @@ if pickled:
 
 prevTime = 0
 
+if pickled:
+    pickled_face_arr = []
+    for pickled_image in pickled_images:
+        matrix = pickled_image['matrix'] # get the image itself
+
+        # Detect face in the pickled image
+        pickled_faces = face_detector.detectMultiScale(matrix, 1.1, 8)
+        if len(pickled_faces) > 0:
+            pickled_face = extract_face(matrix, pickled_faces[0])
+            pickled_face_arr.append(pickled_face)
+
 while True:
     # Capture frame
     ret, frame = cap.read()
@@ -82,9 +92,6 @@ while True:
 
     # Detect faces with classifier against the grayscale image
     faces = face_detector.detectMultiScale(grey, 1.1, 8)
-
-    # Flag to check if at least one match is found
-    match_found = False
 
     #calculates fps
     currTime = time.time()
@@ -106,38 +113,32 @@ while True:
 
         live_face = extract_face(frame, (x, y, w, h))
 
-        if pickled:
-            for pickled_image in pickled_images:
-                matrix = pickled_image['matrix'] # get the image itself
-                
-                # Detect face in the pickled image
-                pickled_faces = face_detector.detectMultiScale(matrix, 1.1, 8)
-                if len(pickled_faces) > 0:
-                    pickled_face = extract_face(matrix, pickled_faces[0])
+        if pickled and frame_count % 10 == 0:
+            for face in pickled_face_arr:
+                mse = compare_faces(live_face, pickled_face)
 
-                    mse = compare_faces(live_face, pickled_face)
+                # If MSE is low, faces are likely the same
+                if mse < 100:
+                    person = pickled_image['person'] # get the person associated with that pickeled image
 
-                    # If MSE is low, faces are likely the same
-                    if mse < 100:
-                        person = pickled_image['person'] # get the person associated with that pickeled image
-                        
-                        cv2.putText(frame, "Face Matched!", (10, 55), cv2.FONT_HERSHEY_SIMPLEX, .8, (0, 255, 0), 2, cv2.LINE_AA) # put valid text on screen in green
-                        cv2.putText(frame, person, (x,y-5), cv2.FONT_ITALIC, .8, (0, 255, 0), 2, cv2.LINE_AA) # put text to identify person in white
+                    match_found = True  # Set match_found to True when a match is found
+                    break  # No need to check further pickled images
+                else:
+                    match_found = False
 
-                        match_found = True  # Set match_found to True when a match is found
-                        break  # No need to check further pickled images
-
-            # If no match found after comparing all pickled images, show "No match"
-            if not match_found:
-                cv2.putText(frame, "No match", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) #put invalid text on screen in red
-                print("No match.")
+        # If no match found after comparing all pickled images, show "No match"
+        if not match_found:
+            cv2.putText(frame, "No match", (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) #put invalid text on screen in red
+        if match_found:
+            cv2.putText(frame, "Face Matched!", (10, 55), cv2.FONT_HERSHEY_SIMPLEX, .8, (0, 255, 0), 2, cv2.LINE_AA) # put valid text on screen in green
+            cv2.putText(frame, person, (x,y-5), cv2.FONT_ITALIC, .8, (0, 255, 0), 2, cv2.LINE_AA) # put text to identify person
 
     frame_count += 1
 
     cv2.imshow("Camera", frame)
 
     # Exit loop if 'q' is pressed
-    if cv2.waitKey(1) == ord('q'):
+    if cv2.waitKey(25) == ord('q'):
         break
 
 cap.release()

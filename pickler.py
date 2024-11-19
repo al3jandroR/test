@@ -1,8 +1,8 @@
+import sys
 import cv2
 import os
-import time
 import pickle
-import numpy as np
+import time
 
 
 # Initialize the cascade classifier and video capture
@@ -33,7 +33,7 @@ def extract_face(image, face_coords):
 person_name = input("What is your name?\n") 
 
 print("You may add as many photos as you'd like to the database.\n\n-q, Press q to quit\n\n-p, Press p to add photo to database")
-
+prevTime = 0
 while True:
     # Capture frame
     ret, frame = cap.read()
@@ -47,18 +47,27 @@ while True:
     # Detect faces with classifier against the grayscale image
     faces = face_detector.detectMultiScale(grey, 1.1, 8)
 
+    #calculates fps
+    currTime = time.time()
+    fps = 1 / (currTime - prevTime)
+    prevTime = currTime
+
+    #put framerate on image
+    cv2.putText(frame, f"FPS: {int(fps)}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, .8, (0, 255, 0), 2)
+
     # If 'P' is pressed, pickle the image
-    if cv2.waitKey(30) == ord('p'):
+    if cv2.waitKey(25) == ord('p'):
         # Generate a unique filename
         filename = f"image_{person_name}{image_counter}.pickle"
         pickle_image(grey, filename, person_name)
         print(f"Image pickled as {filename}.")
         image_counter += 1
     # Exit the loop if 'q' is pressed
-    if cv2.waitKey(30) == ord('q'):
-        break
+    if cv2.waitKey(25) == ord('q'):
+        cap.release()
+        cv2.destroyAllWindows()
+        sys.exit(0)
     # Show the frame
     cv2.imshow("Camera", frame)
 
-cap.release()
-cv2.destroyAllWindows()
+
