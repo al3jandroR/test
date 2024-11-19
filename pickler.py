@@ -15,7 +15,6 @@ output_folder = 'pickled_images'
 if not os.path.exists(output_folder):
     os.makedirs(output_folder)
 
-# Pickle the first image when 'P' is pressed
 # a pickled image is comprised of a matrix(image itself) and an associated name. 
 def pickle_image(grey_frame, filename, person_name):
     filepath = os.path.join(output_folder, filename)
@@ -43,9 +42,10 @@ while True:
 
     # Convert to grayscale
     grey = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    small_frame = cv2.resize(grey, (0, 0), fx=0.5, fy=0.5)
 
     # Detect faces with classifier against the grayscale image
-    faces = face_detector.detectMultiScale(grey, 1.1, 8)
+    faces = face_detector.detectMultiScale(small_frame, 1.1, 8)
 
     #calculates fps
     currTime = time.time()
@@ -56,14 +56,15 @@ while True:
     cv2.putText(frame, f"FPS: {int(fps)}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, .8, (0, 255, 0), 2)
 
     # If 'P' is pressed, pickle the image
-    if cv2.waitKey(25) == ord('p'):
+    key = cv2.waitKey(40)
+    if (key == ord('p')):
         # Generate a unique filename
         filename = f"image_{person_name}{image_counter}.pickle"
         pickle_image(grey, filename, person_name)
         print(f"Image pickled as {filename}.")
         image_counter += 1
     # Exit the loop if 'q' is pressed
-    if cv2.waitKey(25) == ord('q'):
+    elif key == ord('q'):
         cap.release()
         cv2.destroyAllWindows()
         sys.exit(0)

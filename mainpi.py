@@ -79,7 +79,7 @@ verifiedPickles = 0
 if pickled:
     pickled_face_arr = []
     for pickled_image in pickled_images:
-        matrix = pickled_image['matrix'] # get the image itself
+        matrix = pickled_image['matrix'] # Get the image itself
 
         # Detect face in the pickled image
         pickled_faces = face_detector.detectMultiScale(matrix, 1.1, 8)
@@ -101,12 +101,12 @@ while True:
 
     detectionEndTime = time.time()
 
-    #calculates fps
+    # calculates fps
     currTime = time.time()
     fps = 1 / (currTime - prevTime)
     prevTime = currTime
 
-    #put framerate on image
+    # put framerate on image
     cv2.putText(frame, f"FPS: {int(fps)}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, .8, (0, 255, 0), 2)
 
     for (x, y, w, h) in faces:
@@ -127,7 +127,7 @@ while True:
 
                 # If MSE is low, faces are likely the same
                 if mse < 100:
-                    person = pickled_image['person'] # get the person associated with that pickeled image
+                    person = pickled_image['person'] #get the person associated with that pickeled image
 
                     match_found = True  # Set match_found to True when a match is found
                     break  # No need to check further pickled images
@@ -141,14 +141,14 @@ while True:
             cv2.putText(frame, "Face Matched!", (10, 55), cv2.FONT_HERSHEY_SIMPLEX, .8, (0, 255, 0), 2, cv2.LINE_AA) # put valid text on screen in green
             cv2.putText(frame, person, (x,y-5), cv2.FONT_ITALIC, .8, (0, 255, 0), 2, cv2.LINE_AA) # put text to identify person
 
-    # Resize the frame for display (smaller window)
-    display_frame = cv2.resize(frame, (640, 480))  # Resize
+    #Resize the frame for display (smaller window)
+    display_frame = cv2.resize(frame, (640, 480))  #Resize
 
     frame_count += 1
 
     cv2.imshow("Camera", frame)
 
-    # Exit loop if 'q' is pressed
+    #Exit loop if 'q' is pressed
     if cv2.waitKey(25) == ord('q'):
         break
 
@@ -161,6 +161,6 @@ if verifiedPickles > 0:
 
 cv2.destroyAllWindows()
 
-# Print saved detection results
+#Print saved detection results
 for detection in detections:
     print(f"Saved: {detection[0]} - Faces detected: {detection[1]}")
