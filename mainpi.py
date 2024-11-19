@@ -9,7 +9,7 @@ from picamera2 import Picamera2
 databaseAdd = input("Would you like to add your face to the database?\n1: Yes\n2: No\n")
 
 if databaseAdd == "1":
-    subprocess.run(["python", "pickler.py"])
+    subprocess.run(["python3", "pickler.py"])
 
 if os.path.isdir('pickled_images'):
     pickled = True  # set to true if you have pickled your faces with pickler.py
@@ -140,8 +140,7 @@ while True:
     # Exit loop if 'q' is pressed
     if cv2.waitKey(25) == ord('q'):
         break
-
-cap.release()
+    
 cv2.destroyAllWindows()
 
 # Print saved detection results
