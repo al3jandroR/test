@@ -71,6 +71,10 @@ if pickled:
     pickled_images = load_pickled_images()
 
 prevTime = 0
+detectedFrames = 0
+DetectionTimes = 0
+verifiedPickleTime = 0
+verifiedPickles = 0
 
 if pickled:
     pickled_face_arr = []
@@ -90,8 +94,12 @@ while True:
     # Convert to grayscale
     grey = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
+    detectionStartTime = time.time()
+
     # Detect faces with classifier against the grayscale image
     faces = face_detector.detectMultiScale(grey, 1.1, 8)
+
+    detectionEndTime = time.time()
 
     #calculates fps
     currTime = time.time()
@@ -102,36 +110,41 @@ while True:
     cv2.putText(frame, f"FPS: {int(fps)}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, .8, (0, 255, 0), 2)
 
     for (x, y, w, h) in faces:
-        # Draw rectangle around the detected face
+        DetectionTimes += (detectionEndTime - detectionStartTime)
+        detectedFrames += 1
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-        # Save detected frame to folder every 10 frames
+#        # Save detected frame to folder every 10 frames
         if frame_count % 10 == 0:
-            save_path = os.path.join(save_dir, f"frame_{frame_count}.jpg")
-            cv2.imwrite(save_path, frame)
-            detections.append((save_path, len(faces)))
+#            save_path = os.path.join(save_dir, f"frame_{frame_count}.jpg")
+#            cv2.imwrite(save_path, frame)
+#            detections.append((save_path, len(faces)))
 
-        live_face = extract_face(frame, (x, y, w, h))
+        if pickled:
+            verifiedPickles = 0
+            verifiedPickleTime = 0
+            for pickled_image in pickled_images:
+                matrix = pickled_image['matrix'] # get the image itself
 
-        if pickled and frame_count % 10 == 0:
-            for face in pickled_face_arr:
-                mse = compare_faces(live_face, pickled_face)
+                # Detect face in the pickled image
+                pickled_faces = face_detector.detectMultiScale(matrix, 1.1, 8)
+                if pickled_faces.any():
+                    pickleStartTime = time.time()
+                    pickled_face = extract_face(matrix, pickled_faces[0])
+                    live_face = extract_face(frame, (x, y, w, h))
+                    mse = compare_faces(live_face, pickled_face)
+                    print(mse)
+                    if mse < 90:
+                        verifiedPickles += 1
+                        person = pickled_image['person']
+                        cv2.putText(frame, f"Hello {person}!", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+                        verifiedPickleTime = time.time() - pickleStartTime
+                        break
+            else:
+                cv2.putText(frame, "No match", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
 
-                # If MSE is low, faces are likely the same
-                if mse < 100:
-                    person = pickled_image['person'] # get the person associated with that pickeled image
-
-                    match_found = True  # Set match_found to True when a match is found
-                    break  # No need to check further pickled images
-                else:
-                    match_found = False
-
-        # If no match found after comparing all pickled images, show "No match"
-        if not match_found:
-            cv2.putText(frame, "No match", (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) #put invalid text on screen in red
-        if match_found:
-            cv2.putText(frame, "Face Matched!", (10, 55), cv2.FONT_HERSHEY_SIMPLEX, .8, (0, 255, 0), 2, cv2.LINE_AA) # put valid text on screen in green
-            cv2.putText(frame, person, (x,y-5), cv2.FONT_ITALIC, .8, (0, 255, 0), 2, cv2.LINE_AA) # put text to identify person
+    # Resize the frame for display (smaller window)
+    display_frame = cv2.resize(frame, (640, 480))  # Resize
 
     frame_count += 1
 
@@ -140,7 +153,14 @@ while True:
     # Exit loop if 'q' is pressed
     if cv2.waitKey(25) == ord('q'):
         break
-    
+
+if detectedFrames > 0:
+    avgDetectionTime = DetectionTimes / detectedFrames
+    print(f"Avg Detection Time: {avgDetectionTime}")
+if verifiedPickles > 0:
+    avgPicklerTime = verifiedPickleTime / verifiedPickles
+    print(f"Avg Match Time: {avgPicklerTime}")
+
 cv2.destroyAllWindows()
 
 # Print saved detection results
