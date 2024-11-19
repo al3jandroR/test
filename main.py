@@ -1,10 +1,14 @@
+import time
 import cv2
 import os
 import pickle
 import numpy as np
 import re
 
-pickled = True  # set to true if you have pickled your faces with pickler.py
+if os.path.isdir('pickled_folder'):
+    pickled = True  # set to true if you have pickled your faces with pickler.py
+else:
+    pickled = False
 
 # Initialize the cascade classifier and video capture
 face_detector = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
@@ -55,7 +59,10 @@ def load_pickled_images():
 
 
 # Load pickled images once at the beginning
-pickled_images = load_pickled_images()
+if pickled:
+    pickled_images = load_pickled_images()
+
+prevTime = 0
 
 while True:
     # Capture frame
@@ -72,6 +79,15 @@ while True:
 
     # Flag to check if at least one match is found
     match_found = False
+
+    currTime = time.time()
+
+    fps = 1 / (currTime - prevTime)
+
+    prevTime = currTime
+
+    #put framerate on image
+    cv2.putText(frame, f"FPS: {int(fps)}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
     for (x, y, w, h) in faces:
         # Draw rectangle around the detected face
