@@ -3,7 +3,6 @@ import cv2
 import os
 import pickle
 import numpy as np
-import re
 
 if os.path.isdir('pickled_folder'):
     pickled = True  # set to true if you have pickled your faces with pickler.py
