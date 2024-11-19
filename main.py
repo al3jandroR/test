@@ -1,3 +1,4 @@
+import subprocess
 import time
 import cv2
 import os
@@ -5,7 +6,12 @@ import pickle
 import numpy as np
 import re
 
-if os.path.isdir('pickled_folder'):
+databaseAdd = input("Would you like to add your face to the database?\n1: Yes\n2: No\n")
+
+if databaseAdd == "1":
+    subprocess.run(["python", "pickler.py"])
+
+if os.path.isdir('pickled_images'):
     pickled = True  # set to true if you have pickled your faces with pickler.py
 else:
     pickled = False
@@ -80,14 +86,13 @@ while True:
     # Flag to check if at least one match is found
     match_found = False
 
+    #calculates fps
     currTime = time.time()
-
     fps = 1 / (currTime - prevTime)
-
     prevTime = currTime
 
     #put framerate on image
-    cv2.putText(frame, f"FPS: {int(fps)}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+    cv2.putText(frame, f"FPS: {int(fps)}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, .8, (0, 255, 0), 2)
 
     for (x, y, w, h) in faces:
         # Draw rectangle around the detected face
@@ -99,6 +104,8 @@ while True:
             cv2.imwrite(save_path, frame)
             detections.append((save_path, len(faces)))
 
+        live_face = extract_face(frame, (x, y, w, h))
+
         if pickled:
             for pickled_image in pickled_images:
                 matrix = pickled_image['matrix'] # get the image itself
@@ -108,18 +115,14 @@ while True:
                 if len(pickled_faces) > 0:
                     pickled_face = extract_face(matrix, pickled_faces[0])
 
-                    live_face = extract_face(frame, (x, y, w, h))
-
                     mse = compare_faces(live_face, pickled_face)
 
                     # If MSE is low, faces are likely the same
                     if mse < 100:
                         person = pickled_image['person'] # get the person associated with that pickeled image
                         
-                        cv2.putText(frame, "Face Matched!", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA) # put valid text on screen in green
-                        cv2.putText(frame, person, (x,y), cv2.FONT_ITALIC, 1, (255, 255, 255), 2, cv2.LINE_AA) # put text to identify person in white
-                        print("Face matched!")
-                        print("Hello " + person + "!")
+                        cv2.putText(frame, "Face Matched!", (10, 55), cv2.FONT_HERSHEY_SIMPLEX, .8, (0, 255, 0), 2, cv2.LINE_AA) # put valid text on screen in green
+                        cv2.putText(frame, person, (x,y-5), cv2.FONT_ITALIC, .8, (0, 255, 0), 2, cv2.LINE_AA) # put text to identify person in white
 
                         match_found = True  # Set match_found to True when a match is found
                         break  # No need to check further pickled images

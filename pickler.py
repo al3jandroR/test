@@ -30,14 +30,15 @@ def extract_face(image, face_coords):
     return image[y:y+h, x:x+w]
 
 
-person_name = 'person' # replace with your name when pickeling
+person_name = input("What is your name?\n") 
 
+print("You may add as many photos as you'd like to the database.\n\n-q, Press q to quit\n\n-p, Press p to add photo to database")
 
 while True:
     # Capture frame
     ret, frame = cap.read()
     if not ret:
-        print("Failed to capture frame.")
+        print("Failed to capture frame.\n")
         break
 
     # Convert to grayscale
@@ -46,22 +47,18 @@ while True:
     # Detect faces with classifier against the grayscale image
     faces = face_detector.detectMultiScale(grey, 1.1, 8)
 
-    for (x, y, w, h) in faces:
-        # If 'P' is pressed, pickle the image
-        if cv2.waitKey(1) == ord('p'):
-            # Generate a unique filename
-            filename = f"image_{person_name}{image_counter}.pickle"
-            pickle_image(grey, filename, person_name)
-            print(f"Image pickled as {filename}.")
-            image_counter += 1
-
-
+    # If 'P' is pressed, pickle the image
+    if cv2.waitKey(30) == ord('p'):
+        # Generate a unique filename
+        filename = f"image_{person_name}{image_counter}.pickle"
+        pickle_image(grey, filename, person_name)
+        print(f"Image pickled as {filename}.")
+        image_counter += 1
+    # Exit the loop if 'q' is pressed
+    if cv2.waitKey(30) == ord('q'):
+        break
     # Show the frame
     cv2.imshow("Camera", frame)
-
-    # Exit the loop if 'q' is pressed
-    if cv2.waitKey(1) == ord('q'):
-        break
 
 cap.release()
 cv2.destroyAllWindows()
