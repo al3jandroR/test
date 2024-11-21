@@ -131,6 +131,7 @@ while True:
         
         # Checks face in frame to pickle database every 5 frames
         if pickled:
+            match_found = False
             beforeMatch = time.time()
             live_face = extract_face(small_frame, (int(x/2), int(y/2), int(w/2), int(h/2)))
             for face in pickled_face_arr:
@@ -147,8 +148,8 @@ while True:
                     cv2.putText(frame, "Face Matched!", (10, 55), cv2.FONT_HERSHEY_SIMPLEX, .8, (0, 255, 0), 2, cv2.LINE_AA) # put valid text on screen in green
                     cv2.putText(frame, person, (x,y-5), cv2.FONT_ITALIC, .8, (0, 255, 0), 2, cv2.LINE_AA) # put text to identify person
                     break  # No need to check further pickled images
-                else:
-                    cv2.putText(frame, "No match", (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) #put invalid text on screen in red
+            if not (match_found):
+                cv2.putText(frame, "No match", (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) #put invalid text on screen in red
 
     cv2.imshow("Camera", frame)
 
