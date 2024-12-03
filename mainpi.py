@@ -4,6 +4,7 @@ import cv2
 import os
 import pickle
 import numpy as np
+from picamera2 import Picamera2
 
 #databaseAdd = input("Would you like to add your face to the database?\n1: Yes\n2: No\n")
 
