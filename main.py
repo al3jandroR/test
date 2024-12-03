@@ -5,10 +5,10 @@ import os
 import pickle
 import numpy as np
 
-databaseAdd = input("Would you like to add your face to the database?\n1: Yes\n2: No\n")
+#databaseAdd = input("Would you like to add your face to the database?\n1: Yes\n2: No\n")
 
-if databaseAdd == "1":
-    subprocess.run(["python", "pickler.py"])
+#if databaseAdd == "1":
+   # subprocess.run(["python", "pickler.py"])
 
 if os.path.isdir('pickled_images'):
     pickled = True  # set to true if you have pickled your faces with pickler.py
@@ -94,6 +94,7 @@ beforeMatch = 0
 afterMatch = 0
 missedMatches = 0
 
+startTime = time.time()
 while True:
     # Capture frame
     ret, frame = cap.read()
@@ -152,22 +153,32 @@ while True:
                 cv2.putText(frame, "No match", (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) #put invalid text on screen in red
 
     cv2.imshow("Camera", frame)
+    cv2.waitKey(20)
 
     # Exit loop if 'q' is pressed
-    if cv2.waitKey(25) == ord('q'):
-        break
-
-if (numberOfDetections > 0):
-    averageTimeForDetection = runningCountOfDetectionTime/numberOfDetections
-if (numberOfMatches > 0):
-    averageTimeForMatch = runningCountOfMatchTime/numberOfMatches
+    if int(time.time()) == int(startTime + 5):
+        if (numberOfDetections > 0):
+            averageTimeForDetection = runningCountOfDetectionTime/numberOfDetections
+        if (numberOfMatches > 0):
+             averageTimeForMatch = runningCountOfMatchTime/numberOfMatches
+        print(f"Average time to detect faces in frame: {averageTimeForDetection:.6f}")
+        print(f"Average time to match detected face: {averageTimeForMatch:.6f}")
+        print(f'Match to Detection ratio: {numberOfMatches / numberOfDetections:.3f}')
+        beforeDetection = 0
+        afterDetection = 0
+        runningCountOfDetectionTime = 0
+        averageTimeForDetection = 0
+        numberOfDetections = 0
+        numberOfMatches = 0
+        averageTimeForMatch = 0
+        runningCountOfMatchTime = 0
+        beforeMatch = 0
+        afterMatch = 0
+        missedMatches = 0
 
 cap.release()
 cv2.destroyAllWindows()
 
-print(f"Average time to detect faces in frame: {averageTimeForDetection:.6f}")
-print(f"Average time to match detected face: {averageTimeForMatch:.6f}")
-print(f'Match to Detection ratio: {numberOfMatches / numberOfDetections:.3f}')
 
 # Print saved detection results
 for detection in detections:

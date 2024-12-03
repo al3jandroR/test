@@ -59,7 +59,7 @@ while True:
     key = cv2.waitKey(40)
     if (key == ord('p')):
         # Generate a unique filename
-        filename = f"image_{person_name}{image_counter}.pickle"
+        filename = f"image_{person_name}{time.time()}.pickle"
         pickle_image(grey, filename, person_name)
         print(f"Image pickled as {filename}.")
         image_counter += 1

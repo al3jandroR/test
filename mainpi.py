@@ -4,23 +4,26 @@ import cv2
 import os
 import pickle
 import numpy as np
-from picamera2 import Picamera2
 
-databaseAdd = input("Would you like to add your face to the database?\n1: Yes\n2: No\n")
+#databaseAdd = input("Would you like to add your face to the database?\n1: Yes\n2: No\n")
 
-if databaseAdd == "1":
-    subprocess.run(["python3", "pickler.py"])
-
-if os.path.isdir('pickled_images'):
-    pickled = True  # set to true if you have pickled your faces with pickler.py
-else:
-    pickled = False
+#if databaseAdd == "1":
+   # subprocess.run(["python", "pickler.py"])
 
 # Initialize face detector and PiCamera
 face_detector = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
 picam2 = Picamera2()
 picam2.configure(picam2.create_preview_configuration(main={"format": 'XRGB8888', "size": (640, 480)}, controls={"FrameRate": 10}))
 picam2.start()
+
+if os.path.isdir('pickled_images'):
+    pickled = True  # set to true if you have pickled your faces with pickler.py
+else:
+    pickled = False
+
+# Initialize the cascade classifier and video capture
+face_detector = cv2.CascadeClassifier("haarcascade_frontalface_default.xml")
+cap = cv2.VideoCapture(0)  # Index: 0 for Windows and Raspberry Pi, 1 for Mac
 
 # Folder where pickled images are saved
 pickled_folder = "pickled_images"
@@ -70,23 +73,34 @@ def load_pickled_images():
 if pickled:
     pickled_images = load_pickled_images()
 
-prevTime = 0
-detectedFrames = 0
-DetectionTimes = 0
-verifiedPickleTime = 0
-verifiedPickles = 0
+prevTime = time.time()
 
 if pickled:
     pickled_face_arr = []
     for pickled_image in pickled_images:
-        matrix = pickled_image['matrix'] # Get the image itself
+        matrix = pickled_image['matrix'] # get the image itself
 
         # Detect face in the pickled image
         pickled_faces = face_detector.detectMultiScale(matrix, 1.1, 8)
         if len(pickled_faces) > 0:
             pickled_face = extract_face(matrix, pickled_faces[0])
-            pickled_face_arr.append(pickled_face)
+            pickled_face_arr.append({'image': pickled_face, 'pickle' : pickled_image})
 
+#variables for metrics
+prevTime = time.time()
+beforeDetection = 0
+afterDetection = 0
+runningCountOfDetectionTime = 0
+averageTimeForDetection = 0
+numberOfDetections = 0
+numberOfMatches = 0
+averageTimeForMatch = 0
+runningCountOfMatchTime = 0
+beforeMatch = 0
+afterMatch = 0
+missedMatches = 0
+
+startTime = time.time()
 while True:
     # Capture frame
     frame = picam2.capture_array()
@@ -94,73 +108,81 @@ while True:
     # Convert to grayscale
     grey = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-    detectionStartTime = time.time()
+    beforeDetection = time.time()
 
-    # Detect faces with classifier against the grayscale image
-    faces = face_detector.detectMultiScale(grey, 1.1, 8)
+    # Detect faces with classifier against the scaled down grayscale image 
+    small_frame = cv2.resize(grey, (0, 0), fx=0.5, fy=0.5)
+    faces = face_detector.detectMultiScale(small_frame, 1.1, 8)
 
-    detectionEndTime = time.time()
+    afterDetection = time.time()
+    print(f'Detection Time: {afterDetection - beforeDetection: .4f}')
+    runningCountOfDetectionTime = (afterDetection - beforeDetection)
+    numberOfDetections += 1
 
-    # calculates fps
+    # Calculates fps and put it on image
     currTime = time.time()
     fps = 1 / (currTime - prevTime)
     prevTime = currTime
-
-    # put framerate on image
     cv2.putText(frame, f"FPS: {int(fps)}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, .8, (0, 255, 0), 2)
 
     for (x, y, w, h) in faces:
-        DetectionTimes += (detectionEndTime - detectionStartTime)
-        detectedFrames += 1
+        # Compensate for scaled down image
+        x, y, w, h = 2*x, 2*y, 2*w, 2*h
+
+        # Draw rectangle around the detected face
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-        if frame_count % 10 == 0:
-            save_path = os.path.join(save_dir, f"frame_{frame_count}.jpg")
-            cv2.imwrite(save_path, frame)
-            detections.append((save_path, len(faces)))
-
-        live_face = extract_face(frame, (x, y, w, h))
-
-        if pickled and frame_count % 10 == 0:
+        
+        # Checks face in frame to pickle database every 5 frames
+        if pickled:
+            match_found = False
+            beforeMatch = time.time()
+            live_face = extract_face(small_frame, (int(x/2), int(y/2), int(w/2), int(h/2)))
             for face in pickled_face_arr:
-                mse = compare_faces(live_face, pickled_face)
+                mse = compare_faces(live_face, face['image'])
 
                 # If MSE is low, faces are likely the same
-                if mse < 100:
-                    person = pickled_image['person'] #get the person associated with that pickeled image
-
+                if mse < 90:
+                    numberOfMatches += 1
+                    person = (face['pickle'])['person'] # get the person associated with that pickeled image
                     match_found = True  # Set match_found to True when a match is found
+                    afterMatch = time.time()
+                    runningCountOfMatchTime += (afterMatch - beforeMatch)
+                    print(f"Match Time: {afterMatch - beforeMatch: .4f}")
+                    cv2.putText(frame, "Face Matched!", (10, 55), cv2.FONT_HERSHEY_SIMPLEX, .8, (0, 255, 0), 2, cv2.LINE_AA) # put valid text on screen in green
+                    cv2.putText(frame, person, (x,y-5), cv2.FONT_ITALIC, .8, (0, 255, 0), 2, cv2.LINE_AA) # put text to identify person
                     break  # No need to check further pickled images
-                else:
-                    match_found = False
-
-        # If no match found after comparing all pickled images, show "No match"
-        if not match_found:
-            cv2.putText(frame, "No match", (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) #put invalid text on screen in red
-        if match_found:
-            cv2.putText(frame, "Face Matched!", (10, 55), cv2.FONT_HERSHEY_SIMPLEX, .8, (0, 255, 0), 2, cv2.LINE_AA) # put valid text on screen in green
-            cv2.putText(frame, person, (x,y-5), cv2.FONT_ITALIC, .8, (0, 255, 0), 2, cv2.LINE_AA) # put text to identify person
-
-    #Resize the frame for display (smaller window)
-    display_frame = cv2.resize(frame, (640, 480))  #Resize
-
-    frame_count += 1
+            if not (match_found):
+                cv2.putText(frame, "No match", (10, 55), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) #put invalid text on screen in red
 
     cv2.imshow("Camera", frame)
+    cv2.waitKey(20)
 
-    #Exit loop if 'q' is pressed
-    if cv2.waitKey(25) == ord('q'):
-        break
+    # Exit loop if 'q' is pressed
+    if int(time.time()) == int(startTime + 5):
+        if (numberOfDetections > 0):
+            averageTimeForDetection = runningCountOfDetectionTime/numberOfDetections
+        if (numberOfMatches > 0):
+             averageTimeForMatch = runningCountOfMatchTime/numberOfMatches
+        print(f"Average time to detect faces in frame: {averageTimeForDetection:.6f}")
+        print(f"Average time to match detected face: {averageTimeForMatch:.6f}")
+        print(f'Match to Detection ratio: {numberOfMatches / numberOfDetections:.3f}')
+        beforeDetection = 0
+        afterDetection = 0
+        runningCountOfDetectionTime = 0
+        averageTimeForDetection = 0
+        numberOfDetections = 0
+        numberOfMatches = 0
+        averageTimeForMatch = 0
+        runningCountOfMatchTime = 0
+        beforeMatch = 0
+        afterMatch = 0
+        missedMatches = 0
 
-if detectedFrames > 0:
-    avgDetectionTime = DetectionTimes / detectedFrames
-    print(f"Avg Detection Time: {avgDetectionTime}")
-if verifiedPickles > 0:
-    avgPicklerTime = verifiedPickleTime / verifiedPickles
-    print(f"Avg Match Time: {avgPicklerTime}")
-
+cap.release()
 cv2.destroyAllWindows()
 
-#Print saved detection results
+
+# Print saved detection results
 for detection in detections:
     print(f"Saved: {detection[0]} - Faces detected: {detection[1]}")
